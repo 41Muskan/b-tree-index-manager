@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>B-Tree Index Manager - Professional Database Indexing</title>
+    <link rel="stylesheet" href="../src/styles/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="root">
+        <!-- Navigation Bar -->
+        <nav class="navbar">
+            <div class="container">
+                <div class="logo">
+                    <span class="logo-icon">🌳</span>
+                    <span class="logo-text">B-Tree Index Manager</span>
+                </div>
+                <ul class="nav-menu">
+                    <li><a href="#dashboard" class="nav-link active">Dashboard</a></li>
+                    <li><a href="#indexes" class="nav-link">Indexes</a></li>
+                    <li><a href="#analytics" class="nav-link">Analytics</a></li>
+                    <li><a href="#settings" class="nav-link">Settings</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="container">
+                <div class="hero-content">
+                    <h1>B-Tree Index Manager</h1>
+                    <p>Professional Database Indexing & Performance Optimization</p>
+                    <button class="btn btn-primary" onclick="scrollToSection('dashboard')">Get Started</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Dashboard Section -->
+        <section id="dashboard" class="dashboard-section">
+            <div class="container">
+                <h2>Dashboard</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">📊</div>
+                        <h3>Total Indexes</h3>
+                        <p id="totalIndexesValue" class="stat-value">0</p>
+                        <p class="stat-label">Active Indexes</p>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⚡</div>
+                        <h3>Performance</h3>
+                        <p id="performanceValue" class="stat-value">--</p>
+                        <p class="stat-label">Query Optimization</p>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">💾</div>
+                        <h3>Storage</h3>
+                        <p id="storageValue" class="stat-value">--</p>
+                        <p class="stat-label">Space Used</p>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🔄</div>
+                        <h3>Rebalance</h3>
+                        <p id="rebalanceValue" class="stat-value">0</p>
+                        <p class="stat-label">Operations</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Indexes Section -->
+        <section id="indexes" class="indexes-section">
+            <div class="container">
+                <h2>Index Management</h2>
+                <div class="action-bar">
+                    <input type="text" id="searchInput" class="search-input" placeholder="Search indexes...">
+                    <button class="btn btn-secondary" onclick="showCreateIndexModal()">+ Create Index</button>
+                </div>
+
+                <div id="treePanel" class="tree-panel" style="margin-top: 1.5rem; display: none;">
+                    <h3 id="treePanelTitle">Index Tree</h3>
+                    <div class="tree-controls" style="display: flex; gap: .5rem; margin-bottom: .75rem;">
+                        <input id="keyInput" type="number" placeholder="Key" style="padding: .5rem; width: 120px;">
+                        <button class="btn btn-primary" onclick="insertKey()">Insert Key</button>
+                        <button class="btn btn-secondary" onclick="searchKey()">Search Key</button>
+                    </div>
+                    <div id="treeOutput" class="tree-output" style="background: #f8fafc; border: 1px solid #d1d5db; border-radius: 6px; padding: 0.75rem; min-height: 120px; white-space: pre-wrap; font-family: monospace;"></div>
+                </div>
+
+                <div id="indexesList" class="indexes-list">
+                    <p class="empty-state">No indexes created yet. Create your first index to get started!</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Analytics Section -->
+        <section id="analytics" class="analytics-section">
+            <div class="container">
+                <h2>Analytics & Performance</h2>
+                <div class="analytics-grid">
+                    <div class="chart-card">
+                        <h3>Index Usage Over Time</h3>
+                        <div id="usageChart" class="chart-placeholder">
+                            <p>Chart will appear here</p>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Query Performance</h3>
+                        <div id="performanceChart" class="chart-placeholder">
+                            <p>Chart will appear here</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Modal for Create Index -->
+        <div id="createIndexModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal()">&times;</span>
+                <h3>Create New Index</h3>
+                <div id="modalError" class="error-message" style="display: none;"></div>
+                <form id="createIndexForm">
+                    <input type="text" id="indexName" placeholder="Index Name" required>
+                    <select id="indexType" required>
+                        <option value="">Select Index Type</option>
+                        <option value="btree">B-Tree</option>
+                        <option value="bplus">B+ Tree</option>
+                    </select>
+                    <input type="number" id="indexOrder" placeholder="Order (e.g., 3)" min="2" max="1000" required>
+                    <small style="color: #6b7280; font-size: 0.85rem;">Order must be between 2 and 1000</small>
+                    <textarea id="indexDescription" placeholder="Description (optional)" maxlength="500"></textarea>
+                    <small style="color: #6b7280; font-size: 0.85rem;" id="charCount">0/500 characters</small>
+                    <button type="submit" class="btn btn-primary" id="submitBtn">Create Index</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="container">
+                <p>&copy; 2026 B-Tree Index Manager. All rights reserved.</p>
+                <div class="footer-links">
+                    <a href="#">Privacy</a>
+                    <a href="#">Terms</a>
+                    <a href="#">Contact</a>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script src="../src/utils/api.js"></script>
+    <script src="../src/app.js"></script>
+</body>
+</html>
