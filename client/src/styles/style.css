@@ -1,13 +1,13 @@
 /* ===== Root Variables ===== */
 :root {
-    --primary-color: #6366f1;
-    --secondary-color: #ec4899;
-    --success-color: #10b981;
-    --warning-color: #f59e0b;
-    --danger-color: #ef4444;
+    --primary-color: #7577f2;
+    --secondary-color: #ef5ca5;
+    --success-color: #20c28c;
+    --warning-color: #e6960c;
+    --danger-color: #ef5b5b;
     --dark-color: #1f2937;
     --light-color: #f9fafb;
-    --gray-color: #6b7280;
+    --gray-color: #6e7788;
     --border-radius: 12px;
     --transition: all 0.3s ease;
 }
@@ -25,8 +25,8 @@ html {
 
 body {
     font-family: 'Poppins', sans-serif;
-    background-color: #f3f4f6;
-    color: #1f2937;
+    background-color: #d9e2f6;
+    color: #293443;
     line-height: 1.6;
 }
 
@@ -74,7 +74,7 @@ body {
 .nav-link {
     color: white;
     text-decoration: none;
-    font-weight: 500;
+    font-weight: 550;
     transition: var(--transition);
     padding-bottom: 5px;
     border-bottom: 2px solid transparent;
@@ -134,7 +134,7 @@ body {
 }
 
 .btn-secondary:hover {
-    background-color: #db2777;
+    background-color: #ee2a82;
     transform: translateY(-2px);
 }
 
