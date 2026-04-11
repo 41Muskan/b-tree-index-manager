@@ -440,6 +440,59 @@ body {
     color: var(--primary-color);
 }
 
+/* ===== Tree Visualization ===== */
+#treeVisualization {
+    display: block !important;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: auto;
+    background: white;
+    border-radius: 8px;
+}
+
+#treeCanvas {
+    display: block;
+    margin: 0 auto;
+    width: 100%;
+    height: auto;
+}
+
+.tree-panel {
+    background-color: white;
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.tree-controls {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.tree-controls input {
+    padding: 0.5rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.tree-controls input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+}
+
+#treeStats {
+    background-color: #f3f4f6;
+    border-radius: 6px;
+    padding: 0.75rem;
+    font-size: 0.9rem;
+    margin-top: 0.75rem;
+    border-left: 4px solid var(--primary-color);
+}
+
 /* ===== Responsive Design ===== */
 @media (max-width: 768px) {
     .nav-menu {

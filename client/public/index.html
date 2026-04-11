@@ -82,12 +82,18 @@
 
                 <div id="treePanel" class="tree-panel" style="margin-top: 1.5rem; display: none;">
                     <h3 id="treePanelTitle">Index Tree</h3>
-                    <div class="tree-controls" style="display: flex; gap: .5rem; margin-bottom: .75rem;">
+                    <div class="tree-controls" style="display: flex; gap: .5rem; margin-bottom: .75rem; flex-wrap: wrap;">
                         <input id="keyInput" type="number" placeholder="Key" style="padding: .5rem; width: 120px;">
                         <button class="btn btn-primary" onclick="insertKey()">Insert Key</button>
                         <button class="btn btn-secondary" onclick="searchKey()">Search Key</button>
+                        <button class="btn btn-secondary" onclick="deleteKey()" style="background-color: #ef4444;">Delete Key</button>
                     </div>
-                    <div id="treeOutput" class="tree-output" style="background: #f8fafc; border: 1px solid #d1d5db; border-radius: 6px; padding: 0.75rem; min-height: 120px; white-space: pre-wrap; font-family: monospace;"></div>
+                    <div id="treeVisualization" style="background: #f8fafc; border: 1px solid #d1d5db; border-radius: 6px; min-height: 300px; overflow: auto;">
+                        <svg id="treeCanvas" width="100%" height="300" style="background: #fff;"></svg>
+                    </div>
+                    <div id="treeStats" style="margin-top: 0.75rem; padding: 0.75rem; background: #f3f4f6; border-radius: 6px; font-size: 0.9rem;">
+                        <span id="treeStatsText">No tree loaded</span>
+                    </div>
                 </div>
 
                 <div id="indexesList" class="indexes-list">

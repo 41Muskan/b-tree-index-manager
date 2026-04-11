@@ -149,6 +149,150 @@ class BTree {
         walk(this.root);
         return count;
     }
+
+    getTreeStructure() {
+        const levels = [];
+
+        const traverse = (node, depth = 0) => {
+            if (!levels[depth]) {
+                levels[depth] = [];
+            }
+            levels[depth].push({
+                keys: [...node.keys],
+                leaf: node.leaf,
+                childCount: node.children.length
+            });
+            if (node.children && node.children.length > 0) {
+                node.children.forEach(child => traverse(child, depth + 1));
+            }
+        };
+
+        if (this.root) {
+            traverse(this.root);
+        }
+
+        return {
+            levels,
+            totalNodes: this.countNodes(),
+            totalKeys: this.countKeys(),
+            root: this.toJSON()
+        };
+    }
+
+    delete(key) {
+        if (!this.search(key)) {
+            return false;
+        }
+        this.root = this.deleteRecursive(this.root, key);
+        if (this.root && this.root.keys.length === 0 && !this.root.leaf && this.root.children.length > 0) {
+            this.root = this.root.children[0];
+        }
+        return true;
+    }
+
+    deleteRecursive(node, key) {
+        let i = 0;
+        while (i < node.keys.length && key > node.keys[i]) {
+            i++;
+        }
+
+        if (i < node.keys.length && key === node.keys[i]) {
+            if (node.leaf) {
+                node.keys.splice(i, 1);
+            } else {
+                this.deleteFromNonLeaf(node, i);
+            }
+        } else if (!node.leaf) {
+            const isInSubtree = (i === node.keys.length);
+            if (node.children[i].keys.length < this.order) {
+                this.fillChild(node, i);
+            }
+            if (isInSubtree && i > node.keys.length) {
+                this.deleteRecursive(node.children[i - 1], key);
+            } else {
+                this.deleteRecursive(node.children[i], key);
+            }
+        }
+        return node;
+    }
+
+    deleteFromNonLeaf(node, i) {
+        const key = node.keys[i];
+        if (node.children[i].keys.length >= this.order) {
+            const predecessor = this.getPredecessor(node, i);
+            node.keys[i] = predecessor;
+            this.deleteRecursive(node.children[i], predecessor);
+        } else if (node.children[i + 1].keys.length >= this.order) {
+            const successor = this.getSuccessor(node, i);
+            node.keys[i] = successor;
+            this.deleteRecursive(node.children[i + 1], successor);
+        } else {
+            this.merge(node, i);
+            this.deleteRecursive(node.children[i], key);
+        }
+    }
+
+    getPredecessor(node, i) {
+        let curr = node.children[i];
+        while (!curr.leaf) {
+            curr = curr.children[curr.children.length - 1];
+        }
+        return curr.keys[curr.keys.length - 1];
+    }
+
+    getSuccessor(node, i) {
+        let curr = node.children[i + 1];
+        while (!curr.leaf) {
+            curr = curr.children[0];
+        }
+        return curr.keys[0];
+    }
+
+    fillChild(node, i) {
+        if (i !== 0 && node.children[i - 1].keys.length >= this.order) {
+            this.borrowFromPrev(node, i);
+        } else if (i !== node.children.length - 1 && node.children[i + 1].keys.length >= this.order) {
+            this.borrowFromNext(node, i);
+        } else {
+            if (i !== node.children.length - 1) {
+                this.merge(node, i);
+            } else {
+                this.merge(node, i - 1);
+            }
+        }
+    }
+
+    borrowFromPrev(node, child_idx) {
+        const child = node.children[child_idx];
+        const sibling = node.children[child_idx - 1];
+        child.keys.unshift(node.keys[child_idx - 1]);
+        node.keys[child_idx - 1] = sibling.keys.pop();
+        if (!child.leaf) {
+            child.children.unshift(sibling.children.pop());
+        }
+    }
+
+    borrowFromNext(node, child_idx) {
+        const child = node.children[child_idx];
+        const sibling = node.children[child_idx + 1];
+        child.keys.push(node.keys[child_idx]);
+        node.keys[child_idx] = sibling.keys.shift();
+        if (!child.leaf) {
+            child.children.push(sibling.children.shift());
+        }
+    }
+
+    merge(node, i) {
+        const child = node.children[i];
+        const sibling = node.children[i + 1];
+        child.keys.push(node.keys[i]);
+        child.keys.push(...sibling.keys);
+        if (!child.leaf) {
+            child.children.push(...sibling.children);
+        }
+        node.keys.splice(i, 1);
+        node.children.splice(i + 1, 1);
+    }
 }
 
 module.exports = BTree;

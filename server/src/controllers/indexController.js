@@ -153,7 +153,9 @@ const indexController = {
                 return res.status(404).json({ error: 'Index not found' });
             }
 
-            res.json({ tree: index.treeData || {} });
+            const tree = loadBTree(index);
+            const structure = tree.getTreeStructure();
+            res.json({ tree: structure });
         } catch (error) {
             res.status(500).json({ error: error.message });
         }
@@ -213,11 +215,36 @@ const indexController = {
         }
     },
 
-    // Delete key in BTree (not full algorithm yet)
+    // Delete key in BTree
     deleteKey: async (req, res) => {
-        res.status(501).json({
-            error: 'Delete key in B-Tree is not implemented yet. This will be added in next iteration.'
-        });
+        try {
+            const index = await Index.findById(req.params.id);
+            if (!index) {
+                return res.status(404).json({ error: 'Index not found' });
+            }
+
+            const key = Number(req.params.key);
+            if (Number.isNaN(key)) {
+                return res.status(400).json({ error: 'Key must be numeric' });
+            }
+
+            const tree = loadBTree(index);
+            const deleted = tree.delete(key);
+            if (!deleted) {
+                return res.status(404).json({ error: 'Key not found in tree' });
+            }
+
+            syncIndexFromTree(index, tree);
+            await index.save();
+
+            res.json({ 
+                message: 'Key deleted successfully', 
+                key: key, 
+                tree: index.treeData 
+            });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
     }
 };
 

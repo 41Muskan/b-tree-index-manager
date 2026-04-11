@@ -2,6 +2,7 @@
 let indexes = [];
 let selectedIndexId = null;
 let selectedIndexType = null;
+let editingIndexId = null;
 
 // ===== DOM Ready =====
 document.addEventListener('DOMContentLoaded', function() {
@@ -189,12 +190,15 @@ async function handleCreateIndex(e) {
     // Show loading state
     const submitBtn = document.getElementById('submitBtn');
     const originalText = submitBtn.textContent;
-    submitBtn.textContent = 'Creating...';
+    submitBtn.textContent = editingIndexId ? 'Updating...' : 'Creating...';
     submitBtn.disabled = true;
 
     try {
-        const response = await fetch('http://localhost:5000/api/indexes', {
-            method: 'POST',
+        const url = editingIndexId ? `http://localhost:5000/api/indexes/${editingIndexId}` : 'http://localhost:5000/api/indexes';
+        const method = editingIndexId ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+            method,
             headers: {
                 'Content-Type': 'application/json'
             },
@@ -209,17 +213,18 @@ async function handleCreateIndex(e) {
         const data = await response.json();
 
         if (response.ok) {
-            alert('✓ Index created successfully!');
+            alert(editingIndexId ? '✓ Index updated successfully!' : '✓ Index created successfully!');
+            editingIndexId = null;
             closeModal();
             document.getElementById('createIndexForm').reset();
+            document.getElementById('submitBtn').textContent = 'Create Index';
             loadIndexes();
         } else {
-            // Show server error message
-            const errorMessage = data.error || 'Failed to create index';
+            const errorMessage = data.error || (editingIndexId ? 'Failed to update index' : 'Failed to create index');
             showModalError(errorMessage);
         }
     } catch (error) {
-        console.error('Error creating index:', error);
+        console.error('Error saving index:', error);
         showModalError('Cannot connect to server. Make sure MongoDB is running and the server is started on http://localhost:5000');
     } finally {
         submitBtn.textContent = originalText;
@@ -229,7 +234,21 @@ async function handleCreateIndex(e) {
 
 // ===== Edit Index =====
 async function editIndex(id) {
-    alert('Edit functionality coming soon for index: ' + id);
+    const index = indexes.find(item => item._id === id);
+    if (!index) {
+        alert('Index not found. Please refresh the page.');
+        return;
+    }
+
+    editingIndexId = id;
+    document.getElementById('indexName').value = index.name || '';
+    document.getElementById('indexType').value = index.type || 'btree';
+    document.getElementById('indexOrder').value = index.order || 2;
+    document.getElementById('indexDescription').value = index.description || '';
+    document.getElementById('charCount').textContent = `${(index.description || '').length}/500 characters`;
+    document.getElementById('submitBtn').textContent = 'Update Index';
+    document.getElementById('createIndexModal').style.display = 'block';
+    document.getElementById('modalError').style.display = 'none';
 }
 
 // ===== Select Index and Load Tree =====
@@ -243,48 +262,193 @@ async function selectIndex(id, type) {
     treePanelTitle.textContent = `Index Tree (${type.toUpperCase()})`;
 
     document.getElementById('keyInput').value = '';
-    document.getElementById('treeOutput').textContent = 'Loading tree...';
+    document.getElementById('treeStatsText').textContent = 'Loading tree...';
 
     try {
         const response = await fetch(`http://localhost:5000/api/indexes/${id}/tree`);
         if (!response.ok) {
-            document.getElementById('treeOutput').textContent = 'Failed to load tree';
+            document.getElementById('treeStatsText').textContent = 'Failed to load tree';
             return;
         }
         const payload = await response.json();
         renderTree(payload.tree);
     } catch (error) {
         console.error('Error loading tree:', error);
-        document.getElementById('treeOutput').textContent = 'Error loading tree';
+        document.getElementById('treeStatsText').textContent = 'Error loading tree';
     }
 }
 
 function renderTree(treeData) {
-    if (!treeData || !treeData.keys) {
-        document.getElementById('treeOutput').textContent = 'Empty tree';
+    console.log('renderTree called with:', treeData);
+    
+    if (!treeData) {
+        document.getElementById('treeStatsText').textContent = 'No tree loaded';
         return;
     }
 
-    const levels = [];
+    // Handle new structure with levels
+    if (treeData.levels) {
+        console.log('Using levels structure');
+        visualizeTreeStructure(treeData);
+    } else if (treeData.root) {
+        // Handle root property
+        console.log('Using root structure');
+        visualizeTreeStructure(treeData);
+    } else {
+        console.log('Empty tree - no levels or root');
+        document.getElementById('treeStatsText').textContent = 'Empty tree';
+    }
+}
 
-    function traverse(node, depth = 0) {
-        if (!levels[depth]) {
-            levels[depth] = [];
-        }
-        levels[depth].push(`[${node.keys.join(', ')}]`);
+function visualizeTreeStructure(treeData) {
+    console.log('visualizeTreeStructure called', treeData);
+    
+    const svg = document.getElementById('treeCanvas');
+    if (!svg) {
+        console.error('SVG canvas not found!');
+        return;
+    }
+    
+    svg.innerHTML = ''; // Clear previous content
+
+    const root = treeData.root || { keys: [], children: [], leaf: true };
+    console.log('Root node:', root);
+    
+    if (!root || !root.keys || root.keys.length === 0) {
+        console.log('Empty tree detected');
+        document.getElementById('treeStatsText').textContent = '📭 Empty tree - Insert keys to see structure';
+        svg.parentElement.style.minHeight = '100px';
+        return;
+    }
+
+    console.log('Tree has', root.keys.length, 'keys at root');
+
+    // Calculate tree dimensions
+    const nodeWidth = 80;
+    const nodeHeight = 50;
+    const verticalGap = 100;
+    const horizontalGap = 20;
+
+    const nodes = [];
+    const lines = [];
+
+    function calculatePositions(node, depth = 0, position = 0, totalWidth = 1000) {
+        if (!node) return;
+
+        const x = position + totalWidth / 2;
+        const y = depth * verticalGap + 30;
+
+        nodes.push({
+            keys: node.keys || [],
+            x: x,
+            y: y,
+            leaf: node.leaf,
+            children: node.children ? node.children.length : 0
+        });
+
+        // Calculate child positions
         if (node.children && node.children.length > 0) {
-            node.children.forEach(child => traverse(child, depth + 1));
+            const childWidth = totalWidth / Math.max(node.children.length, 1);
+            let childPosition = position;
+
+            node.children.forEach((child, index) => {
+                const childX = childPosition + childWidth / 2;
+                const childY = (depth + 1) * verticalGap + 30;
+
+                // Store line information
+                lines.push({ x1: x, y1: y + 25, x2: childX, y2: childY - 25 });
+
+                calculatePositions(child, depth + 1, childPosition, childWidth);
+                childPosition += childWidth;
+            });
         }
     }
 
-    traverse(treeData);
+    calculatePositions(root);
 
-    let rendered = '';
-    for (let i = 0; i < levels.length; i++) {
-        rendered += `Level ${i}: ${levels[i].join(' | ')}\n`;
+    console.log('Nodes calculated:', nodes.length);
+    
+    if (nodes.length === 0) {
+        console.log('No nodes after calculation');
+        document.getElementById('treeStatsText').textContent = '📭 Empty tree';
+        return;
     }
 
-    document.getElementById('treeOutput').textContent = rendered;
+    // Set SVG dimensions based on tree depth
+    const maxDepth = calculateTreeDepth(root);
+    const svgHeight = Math.max(300, (maxDepth + 1) * verticalGap + 80);
+    svg.setAttribute('height', svgHeight);
+    svg.setAttribute('width', '100%');
+
+    // Calculate SVG viewBox to fit all nodes
+    let minX = nodes[0].x, maxX = nodes[0].x;
+    nodes.forEach(node => {
+        minX = Math.min(minX, node.x - 60);
+        maxX = Math.max(maxX, node.x + 60);
+    });
+    const viewBoxWidth = maxX - minX + 40;
+    svg.setAttribute('viewBox', `${minX - 20} 0 ${viewBoxWidth} ${svgHeight}`);
+
+    console.log('Drawing', lines.length, 'lines and', nodes.length, 'nodes');
+
+    // Draw lines first (so they appear behind nodes)
+    lines.forEach(line => {
+        const lineEl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        lineEl.setAttribute('x1', line.x1);
+        lineEl.setAttribute('y1', line.y1);
+        lineEl.setAttribute('x2', line.x2);
+        lineEl.setAttribute('y2', line.y2);
+        lineEl.setAttribute('stroke', '#9ca3af');
+        lineEl.setAttribute('stroke-width', '2');
+        svg.appendChild(lineEl);
+    });
+
+    // Draw nodes
+    nodes.forEach((node, idx) => {
+        // Draw rectangle
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', node.x - nodeWidth / 2);
+        rect.setAttribute('y', node.y - nodeHeight / 2);
+        rect.setAttribute('width', nodeWidth + 20);
+        rect.setAttribute('height', nodeHeight);
+        rect.setAttribute('fill', node.leaf ? '#dbeafe' : '#fef3c7');
+        rect.setAttribute('stroke', node.leaf ? '#0284c7' : '#f59e0b');
+        rect.setAttribute('stroke-width', '2');
+        rect.setAttribute('rx', '4');
+        svg.appendChild(rect);
+
+        // Draw keys text
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', node.x);
+        text.setAttribute('y', node.y);
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('dominant-baseline', 'middle');
+        text.setAttribute('font-size', '12');
+        text.setAttribute('font-weight', 'bold');
+        text.setAttribute('fill', '#1f2937');
+        text.textContent = node.keys.join(', ');
+        svg.appendChild(text);
+    });
+
+    console.log('SVG rendering complete');
+
+    // Update stats
+    const stats = treeData;
+    document.getElementById('treeStatsText').innerHTML = `
+        <strong>📊 Tree Stats:</strong> 
+        Total Nodes: ${stats.totalNodes || '?'} | 
+        Total Keys: ${stats.totalKeys || '?'} | 
+        Depth: ${maxDepth} | 
+        Leaf Nodes: <span style="color: #0284c7;">🔵</span>, 
+        Internal Nodes: <span style="color: #f59e0b;">🟨</span>
+    `;
+}
+
+function calculateTreeDepth(node, depth = 0) {
+    if (!node || !node.children || node.children.length === 0) {
+        return depth;
+    }
+    return Math.max(...node.children.map(child => calculateTreeDepth(child, depth + 1)));
 }
 
 async function insertKey() {
@@ -346,11 +510,52 @@ async function searchKey() {
         alert(message);
 
         if (payload.found) {
-            document.getElementById('treeOutput').textContent += `\n${message}`;
+            const statsText = document.getElementById('treeStatsText');
+            if (statsText) {
+                statsText.textContent += ` ${message}`;
+            }
         }
     } catch (error) {
         console.error('Search key error:', error);
         alert('Error searching key. Ensure server is running.');
+    }
+}
+
+// ===== Delete Key =====
+async function deleteKey() {
+    if (!selectedIndexId) {
+        alert('Select an index first');
+        return;
+    }
+
+    const keyValue = Number(document.getElementById('keyInput').value);
+    if (Number.isNaN(keyValue)) {
+        alert('Enter a numeric key');
+        return;
+    }
+
+    if (!confirm(`Delete key ${keyValue}?`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`http://localhost:5000/api/indexes/${selectedIndexId}/keys/${keyValue}`, {
+            method: 'DELETE'
+        });
+
+        const payload = await response.json();
+        if (!response.ok) {
+            alert(payload.error || 'Delete failed');
+            return;
+        }
+
+        alert(`✓ Deleted key ${keyValue}`);
+        document.getElementById('keyInput').value = '';
+        selectIndex(selectedIndexId, selectedIndexType);
+        loadIndexes();
+    } catch (error) {
+        console.error('Delete key error:', error);
+        alert('Error deleting key. Ensure server is running.');
     }
 }
 
@@ -377,13 +582,16 @@ async function deleteIndex(id) {
 
 // ===== Modal Functions =====
 function showCreateIndexModal() {
+    editingIndexId = null;
     clearModalError();
     document.getElementById('createIndexForm').reset();
     document.getElementById('charCount').textContent = '0/500 characters';
+    document.getElementById('submitBtn').textContent = 'Create Index';
     document.getElementById('createIndexModal').style.display = 'block';
 }
 
 function closeModal() {
+    editingIndexId = null;
     document.getElementById('createIndexModal').style.display = 'none';
     clearModalError();
 }
