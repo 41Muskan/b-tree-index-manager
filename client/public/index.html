@@ -47,25 +47,25 @@
                         <div class="stat-icon">📊</div>
                         <h3>Total Indexes</h3>
                         <p id="totalIndexesValue" class="stat-value">0</p>
-                        <p class="stat-label">Active Indexes</p>
+                        <p class="stat-label">Active: <span id="activeIndexesValue">0</span></p>
                     </div>
                     <div class="stat-card">
                         <div class="stat-icon">⚡</div>
                         <h3>Performance</h3>
                         <p id="performanceValue" class="stat-value">--</p>
-                        <p class="stat-label">Query Optimization</p>
+                        <p class="stat-label">Average Node Utilization</p>
                     </div>
                     <div class="stat-card">
                         <div class="stat-icon">💾</div>
                         <h3>Storage</h3>
                         <p id="storageValue" class="stat-value">--</p>
-                        <p class="stat-label">Space Used</p>
+                        <p class="stat-label">Total Keys</p>
                     </div>
                     <div class="stat-card">
                         <div class="stat-icon">🔄</div>
-                        <h3>Rebalance</h3>
+                        <h3>Tree Depth</h3>
                         <p id="rebalanceValue" class="stat-value">0</p>
-                        <p class="stat-label">Operations</p>
+                        <p class="stat-label">Average Depth</p>
                     </div>
                 </div>
             </div>
@@ -80,18 +80,18 @@
                     <button class="btn btn-secondary" onclick="showCreateIndexModal()">+ Create Index</button>
                 </div>
 
-                <div id="treePanel" class="tree-panel" style="margin-top: 1.5rem; display: none;">
+                <div id="treePanel" class="tree-panel tree-panel--visual" style="margin-top: 1.5rem; display: none;">
                     <h3 id="treePanelTitle">Index Tree</h3>
-                    <div class="tree-controls" style="display: flex; gap: .5rem; margin-bottom: .75rem; flex-wrap: wrap;">
-                        <input id="keyInput" type="number" placeholder="Key" style="padding: .5rem; width: 120px;">
-                        <button class="btn btn-primary" onclick="insertKey()">Insert Key</button>
-                        <button class="btn btn-secondary" onclick="searchKey()">Search Key</button>
-                        <button class="btn btn-secondary" onclick="deleteKey()" style="background-color: #ef4444;">Delete Key</button>
+                    <div class="tree-controls">
+                        <input id="keyInput" type="number" placeholder="Key" class="tree-input">
+                        <button class="btn btn-primary tree-btn" onclick="insertKey()">Insert Key</button>
+                        <button class="btn btn-secondary tree-btn" onclick="searchKey()">Search Key</button>
+                        <button class="btn btn-secondary tree-btn tree-btn--danger" onclick="deleteKey()">Delete Key</button>
                     </div>
-                    <div id="treeVisualization" style="background: #f8fafc; border: 1px solid #d1d5db; border-radius: 6px; min-height: 300px; overflow: auto;">
-                        <svg id="treeCanvas" width="100%" height="300" style="background: #fff;"></svg>
+                    <div id="treeVisualization" class="tree-visualization">
+                        <svg id="treeCanvas" width="100%" height="300"></svg>
                     </div>
-                    <div id="treeStats" style="margin-top: 0.75rem; padding: 0.75rem; background: #f3f4f6; border-radius: 6px; font-size: 0.9rem;">
+                    <div id="treeStats" class="tree-stats">
                         <span id="treeStatsText">No tree loaded</span>
                     </div>
                 </div>

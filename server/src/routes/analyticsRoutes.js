@@ -8,20 +8,36 @@ const Index = require('../models/Index');
 // Get analytics data
 router.get('/', async (req, res) => {
     try {
-        const totalIndexes = await Index.countDocuments();
-        const activeIndexes = await Index.countDocuments({ status: 'active' });
-        const totalKeys = await Index.aggregate([
-            { $group: { _id: null, total: { $sum: '$totalKeys' } } }
-        ]);
-        const avgFragmentation = await Index.aggregate([
-            { $group: { _id: null, avg: { $avg: '$fragmentation' } } }
+        const results = await Index.aggregate([
+            {
+                $group: {
+                    _id: null,
+                    totalIndexes: { $sum: 1 },
+                    activeIndexes: { $sum: { $cond: [{ $eq: ['$status', 'active'] }, 1, 0] } },
+                    totalKeys: { $sum: '$totalKeys' },
+                    averageFragmentation: { $avg: '$fragmentation' },
+                    averageDepth: { $avg: '$depth' },
+                    averageNodeUtilization: {
+                        $avg: {
+                            $cond: [
+                                { $gt: ['$nodeCount', 0] },
+                                { $divide: ['$totalKeys', { $multiply: ['$nodeCount', { $subtract: [{ $multiply: ['$order', 2] }, 1] }] }] },
+                                0
+                            ]
+                        }
+                    }
+                }
+            }
         ]);
 
+        const stats = results[0] || {};
         const analytics = {
-            totalIndexes,
-            activeIndexes,
-            totalKeys: totalKeys[0]?.total || 0,
-            averageFragmentation: Math.round(avgFragmentation[0]?.avg || 0),
+            totalIndexes: stats.totalIndexes || 0,
+            activeIndexes: stats.activeIndexes || 0,
+            totalKeys: stats.totalKeys || 0,
+            averageFragmentation: Math.round(stats.averageFragmentation || 0),
+            averageDepth: Math.round(stats.averageDepth || 0),
+            averageNodeUtilization: Math.round((stats.averageNodeUtilization || 0) * 100),
             timestamp: new Date()
         };
 

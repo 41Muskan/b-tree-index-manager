@@ -150,6 +150,29 @@ class BTree {
         return count;
     }
 
+    getDepth() {
+        const depthWalker = (node, currentDepth = 1) => {
+            if (node.leaf) {
+                return currentDepth;
+            }
+            return Math.max(...node.children.map(child => depthWalker(child, currentDepth + 1)));
+        };
+        return this.root ? depthWalker(this.root) : 0;
+    }
+
+    getMaxKeysPerNode() {
+        return 2 * this.order - 1;
+    }
+
+    getAverageFillFactor() {
+        const totalNodes = this.countNodes();
+        if (totalNodes === 0) {
+            return 0;
+        }
+        const maxKeys = totalNodes * this.getMaxKeysPerNode();
+        return maxKeys === 0 ? 0 : this.countKeys() / maxKeys;
+    }
+
     getTreeStructure() {
         const levels = [];
 

@@ -3,6 +3,7 @@ let indexes = [];
 let selectedIndexId = null;
 let selectedIndexType = null;
 let editingIndexId = null;
+let searchedKey = null; // For highlighting searched key
 
 // ===== DOM Ready =====
 document.addEventListener('DOMContentLoaded', function() {
@@ -135,11 +136,67 @@ async function loadAnalytics() {
 
         const data = await response.json();
         document.getElementById('totalIndexesValue').textContent = data.totalIndexes;
-        document.getElementById('performanceValue').textContent = data.averageFragmentation !== undefined ? `${100 - data.averageFragmentation}%` : '--';
+        document.getElementById('activeIndexesValue').textContent = data.activeIndexes;
+        document.getElementById('performanceValue').textContent = data.averageNodeUtilization !== undefined ? `${data.averageNodeUtilization}%` : '--';
         document.getElementById('storageValue').textContent = data.totalKeys;
-        document.getElementById('rebalanceValue').textContent = data.activeIndexes;
+        document.getElementById('rebalanceValue').textContent = data.averageDepth !== undefined ? data.averageDepth : '--';
+
+        renderPerformanceSummary(data);
+        loadAnalyticsTrends();
     } catch (error) {
         console.error('Error loading analytics:', error);
+    }
+}
+
+function renderPerformanceSummary(data) {
+    const performanceChart = document.getElementById('performanceChart');
+    if (!performanceChart) return;
+
+    performanceChart.innerHTML = `
+        <div style="display: grid; gap: 1rem; padding: 1rem; text-align: left;">
+            <div><strong>Avg Node Utilization:</strong> ${data.averageNodeUtilization ?? '--'}%</div>
+            <div><strong>Avg Fragmentation:</strong> ${data.averageFragmentation ?? '--'}%</div>
+            <div><strong>Avg Tree Depth:</strong> ${data.averageDepth ?? '--'}</div>
+            <div><strong>Total Keys:</strong> ${data.totalKeys}</div>
+        </div>
+    `;
+}
+
+async function loadAnalyticsTrends() {
+    try {
+        const response = await fetch('http://localhost:5000/api/analytics/trends');
+        if (!response.ok) {
+            console.warn('Failed to load analytics trends');
+            return;
+        }
+
+        const trends = await response.json();
+        const usageChart = document.getElementById('usageChart');
+        if (!usageChart) return;
+
+        if (!Array.isArray(trends) || trends.length === 0) {
+            usageChart.innerHTML = '<p>No trend data available yet.</p>';
+            return;
+        }
+
+        const maxCount = Math.max(...trends.map(item => item.count));
+        usageChart.innerHTML = trends.map(item => {
+            const label = `${item._id.month}/${item._id.year}`;
+            const width = maxCount > 0 ? Math.max(10, (item.count / maxCount) * 100) : 10;
+            return `
+                <div style="margin-bottom: 0.75rem;">
+                    <div style="display:flex; justify-content:space-between; font-size:0.9rem; margin-bottom:0.25rem;">
+                        <span>${label}</span>
+                        <span>${item.count} indexes</span>
+                    </div>
+                    <div style="background:#e5e7eb; border-radius:999px; height:12px; overflow:hidden;">
+                        <div style="width:${width}%; background:linear-gradient(90deg, #6366f1, #ec4899); height:100%;"></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('Error loading analytics trends:', error);
     }
 }
 
@@ -252,9 +309,12 @@ async function editIndex(id) {
 }
 
 // ===== Select Index and Load Tree =====
-async function selectIndex(id, type) {
+async function selectIndex(id, type, preserveHighlight = false) {
     selectedIndexId = id;
     selectedIndexType = type;
+    if (!preserveHighlight) {
+        searchedKey = null; // Clear highlight when opening or refreshing index normally
+    }
 
     const treePanel = document.getElementById('treePanel');
     const treePanelTitle = document.getElementById('treePanelTitle');
@@ -398,23 +458,26 @@ function visualizeTreeStructure(treeData) {
         lineEl.setAttribute('y1', line.y1);
         lineEl.setAttribute('x2', line.x2);
         lineEl.setAttribute('y2', line.y2);
-        lineEl.setAttribute('stroke', '#9ca3af');
-        lineEl.setAttribute('stroke-width', '2');
+        lineEl.setAttribute('class', 'tree-link');
         svg.appendChild(lineEl);
     });
 
     // Draw nodes
     nodes.forEach((node, idx) => {
+        // Check if this node contains the searched key
+        const isHighlighted = searchedKey !== null && node.keys.includes(searchedKey);
+        
         // Draw rectangle
         const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
         rect.setAttribute('x', node.x - nodeWidth / 2);
         rect.setAttribute('y', node.y - nodeHeight / 2);
         rect.setAttribute('width', nodeWidth + 20);
         rect.setAttribute('height', nodeHeight);
-        rect.setAttribute('fill', node.leaf ? '#dbeafe' : '#fef3c7');
-        rect.setAttribute('stroke', node.leaf ? '#0284c7' : '#f59e0b');
-        rect.setAttribute('stroke-width', '2');
-        rect.setAttribute('rx', '4');
+        rect.setAttribute('class', `tree-node-box${isHighlighted ? ' highlighted' : ''}`);
+        rect.setAttribute('fill', isHighlighted ? '#0f766e' : (node.leaf ? '#dbeafe' : '#fef3c7'));
+        rect.setAttribute('stroke', isHighlighted ? '#047857' : (node.leaf ? '#0284c7' : '#f59e0b'));
+        rect.setAttribute('stroke-width', isHighlighted ? '4' : '2');
+        rect.setAttribute('rx', '14');
         svg.appendChild(rect);
 
         // Draw keys text
@@ -423,9 +486,7 @@ function visualizeTreeStructure(treeData) {
         text.setAttribute('y', node.y);
         text.setAttribute('text-anchor', 'middle');
         text.setAttribute('dominant-baseline', 'middle');
-        text.setAttribute('font-size', '12');
-        text.setAttribute('font-weight', 'bold');
-        text.setAttribute('fill', '#1f2937');
+        text.setAttribute('class', `tree-node-text${isHighlighted ? ' highlighted' : ''}`);
         text.textContent = node.keys.join(', ');
         svg.appendChild(text);
     });
@@ -510,10 +571,17 @@ async function searchKey() {
         alert(message);
 
         if (payload.found) {
-            const statsText = document.getElementById('treeStatsText');
-            if (statsText) {
-                statsText.textContent += ` ${message}`;
-            }
+            searchedKey = keyValue;
+            // Re-render the tree to highlight the node
+            await selectIndex(selectedIndexId, selectedIndexType, true);
+            // Clear highlight after 3 seconds
+            setTimeout(async () => {
+                searchedKey = null;
+                await selectIndex(selectedIndexId, selectedIndexType);
+            }, 3000);
+        } else {
+            searchedKey = null;
+            await selectIndex(selectedIndexId, selectedIndexType);
         }
     } catch (error) {
         console.error('Search key error:', error);

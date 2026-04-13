@@ -15,6 +15,9 @@ function syncIndexFromTree(index, tree) {
     index.treeData = tree.toJSON();
     index.totalKeys = tree.countKeys();
     index.nodeCount = tree.countNodes();
+    index.depth = tree.getDepth();
+    const fillFactor = tree.getAverageFillFactor();
+    index.fragmentation = Math.round((1 - fillFactor) * 100);
     index.lastRebalance = new Date();
 }
 
@@ -208,8 +211,10 @@ const indexController = {
             }
 
             const tree = loadBTree(index);
-            const found = tree.search(key) !== null;
-            res.json({ found, key });
+            const result = tree.search(key);
+            const found = result !== null;
+            const nodeKeys = found ? result.node.keys : null;
+            res.json({ found, key, nodeKeys });
         } catch (error) {
             res.status(500).json({ error: error.message });
         }
